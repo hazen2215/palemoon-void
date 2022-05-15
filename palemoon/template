@@ -1,0 +1,122 @@
+# Template file for 'palemoon'
+pkgname=palemoon
+version=29.4.6
+revision=1
+wrksrc="palemoon-source"
+hostmakedepends="autoconf213 perl pkg-config python unzip yasm zip tar
+ which"
+makedepends="libXt-devel $(vopt_if alsa alsa-lib-devel)
+ $(vopt_if dbus dbus-glib-devel) $(vopt_if pulseaudio pulseaudio-devel)
+ $(vopt_if xscreensaver libXScrnSaver-devel) $(vopt_if sndio sndio-devel)
+ $(vopt_if jack jack-devel) $(vopt_if gtk3 gtk+3-devel gtk+-devel)"
+short_desc="Open source web browser based on Firefox focusing on efficiency"
+maintainer="hazen2215 <haz@disroot.org>"
+license="MPL-2.0, GPL-2.0-or-later, LGPL-2.1-or-later"
+homepage="https://www.palemoon.org/"
+distfiles="https://archive.palemoon.org/source/palemoon-${version}.source.tar.xz"
+checksum=34ba2b78b640f8ff1eb8137bb87a24ab5452eddc0b42fa908e4d5a1a898cfdac
+
+build_options="alsa jack dbus pulseaudio xscreensaver sndio gtk3"
+build_options_default="alsa"
+
+if [ "$XBPS_TARGET_NO_ATOMIC8" ]; then
+	makedepends+=" libatomic-devel"
+fi
+
+post_patch() {
+	if [ "$build_option_gtk3" ]; then
+		patch -Np1 -i "${FILESDIR}/no-gtk2.patch"
+	fi
+
+	# actually mach is bash script
+	vsed -i -e '1s~/bin/sh~/bin/bash~' mach
+}
+
+do_build() {
+	cp "${FILESDIR}/mozconfig" "${wrksrc}/.mozconfig"
+
+	case "$XBPS_TARGET_MACHINE" in
+	*-musl)
+		echo "ac_add_options --disable-jemalloc" >>.mozconfig
+		;;
+	esac
+
+	case "$XBPS_TARGET_MACHINE" in
+	x86_64*|i686*|arm*|aarch64*)
+		echo "ac_add_options --disable-elf-hack" >>.mozconfig
+		;;
+	esac
+
+	if [ "$XBPS_TARGET_NO_ATOMIC8" ]; then
+		export LDFLAGS+=" -latomic"
+	fi
+
+	if [ "$CROSS_BUILD" ]; then
+		export HOST_CFLAGS="${XBPS_CFLAGS}"
+		export HOST_CXXFLAGS="${XBPS_CXXFLAGS}"
+		export CFLAGS+=" -I${XBPS_CROSS_BASE}/usr/include/alsa \
+			-I${XBPS_CROSS_BASE}/usr/include/pulse"
+		export CXXFLAGS+=" ${CFLAGS}"
+		export LDFLAGS+=" -L${XBPS_CROSS_BASE}/usr/lib"
+
+		export ac_cv_sqlite_secure_delete=yes \
+			ac_cv_sqlite_threadsafe=yes \
+			ac_cv_sqlite_enable_fts3=yes \
+			ac_cv_sqlite_dbstat_vtab=yes \
+			ac_cv_sqlite_enable_unlock_notify=yes \
+			ac_cv_prog_hostcxx_works=1
+
+		echo "ac_add_options --target=$XBPS_CROSS_TRIPLET" >>.mozconfig
+		echo "ac_add_options --host=$XBPS_TRIPLET" >>.mozconfig
+	else
+		echo "ac_add_options --target=$XBPS_TRIPLET" >>.mozconfig
+		echo "ac_add_options --host=$XBPS_TRIPLET" >>.mozconfig
+	fi
+
+	# work around large debug symbols on 32-bit hosts
+	if [ "$XBPS_WORDSIZE" = "32" ]; then
+		echo "ac_add_options --disable-debug-symbols" >>.mozconfig
+		export LDFLAGS+=" -Wl,--no-keep-memory"
+	fi
+
+	export LDFLAGS+=" -Wl,-rpath=/usr/lib/palemoon"
+
+	# increase default stack size as palemoon uses a recursive js parser
+	export LDFLAGS+=" -Wl,-z,stack-size=524288"
+
+	export MOZ_MAKE_FLAGS="${makejobs}"
+	export MOZ_NOSPAM=1
+	export MOZBUILD_STATE_PATH="${wrksrc}/mozbuild"
+
+	cat <<! >>.mozconfig
+ac_add_options --enable-default-toolkit=cairo-gtk$(vopt_if gtk3 '3' '2')
+ac_add_options $(vopt_enable alsa)
+ac_add_options $(vopt_enable jack)
+ac_add_options $(vopt_enable sndio)
+ac_add_options $(vopt_enable dbus)
+ac_add_options $(vopt_enable pulseaudio)
+export MOZ_PKG_SPECIAL=gtk$(vopt_if gtk3 '3' '2')
+!
+
+	rm -f old-configure
+	./mach build
+}
+
+do_install() {
+	export MOZBUILD_STATE_PATH="${wrksrc}/mozbuild"
+	DESTDIR="$DESTDIR" ./mach install
+
+	vinstall ${wrksrc}/palemoon/branding/official/palemoon.desktop 644 \
+		usr/share/applications
+
+	for i in 16 22 24 32 48 256; do
+		vinstall ${wrksrc}/palemoon/branding/official/default$i.png 644 \
+			usr/share/icons/hicolor/${i}x${i}/apps palemoon.png
+	done
+
+	# We don't want the development stuff
+	rm -rf ${DESTDIR}/usr/{include,lib/palemoon-devel,share}
+
+	# https://bugzilla.mozilla.org/show_bug.cgi?id=658850
+	ln -sf palemoon ${DESTDIR}/usr/lib/palemoon/palemoon-bin
+}

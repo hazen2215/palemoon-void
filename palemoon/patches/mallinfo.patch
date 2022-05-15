@@ -1,0 +1,36 @@
+diff --git a/platform/xpcom/base/nsMemoryReporterManager.cpp b/platform/xpcom/base/nsMemoryReporterManager.cpp
+index 810254b..cdbc3b3 100644
+--- a/platform/xpcom/base/nsMemoryReporterManager.cpp
++++ b/platform/xpcom/base/nsMemoryReporterManager.cpp
+@@ -151,6 +151,7 @@ ResidentUniqueDistinguishedAmount(int64_t* aN)
+   return GetProcSelfSmapsPrivate(aN);
+ }
+ 
++#ifdef __GLIBC__
+ #ifdef HAVE_MALLINFO
+ #define HAVE_SYSTEM_HEAP_REPORTER 1
+ static MOZ_MUST_USE nsresult
+@@ -172,6 +173,7 @@ SystemHeapSize(int64_t* aSizeOut)
+     return NS_OK;
+ }
+ #endif
++#endif // __GLIBC__
+ 
+ #elif defined(__DragonFly__) || defined(__FreeBSD__) \
+     || defined(__NetBSD__) || defined(__OpenBSD__) \
+@@ -530,6 +532,7 @@ PrivateDistinguishedAmount(int64_t* aN)
+   return NS_OK;
+ }
+ 
++#ifdef __GLIBC__
+ #define HAVE_SYSTEM_HEAP_REPORTER 1
+ // Windows can have multiple separate heaps. During testing there were multiple
+ // heaps present but the non-default ones had sizes no more than a few 10s of
+@@ -580,6 +583,7 @@ SystemHeapSize(int64_t* aSizeOut)
+   *aSizeOut = heapsSize;
+   return NS_OK;
+ }
++#endif // __GLIBC__
+ 
+ struct SegmentKind
+ {
