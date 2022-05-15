@@ -1,0 +1,13 @@
+diff --git a/platform/mozglue/misc/StackWalk.cpp b/platform/mozglue/misc/StackWalk.cpp
+index e24d76d..5e47a64 100644
+--- a/platform/mozglue/misc/StackWalk.cpp
++++ b/platform/mozglue/misc/StackWalk.cpp
+@@ -33,7 +33,7 @@ static CriticalAddress gCriticalAddress;
+ #include <dlfcn.h>
+ #endif
+ 
+-#if (defined(linux) && \
++#if defined(__GLIBC__) && (defined(linux) && \
+      ((defined(__GNUC__) && (defined(__i386) || defined(PPC))) || \
+       defined(HAVE__UNWIND_BACKTRACE)))
+ #define MOZ_STACKWALK_SUPPORTS_LINUX 1
