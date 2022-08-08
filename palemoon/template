@@ -1,8 +1,9 @@
 # Template file for 'palemoon'
 pkgname=palemoon
-version=29.4.6
+version=31.1.1
 revision=1
-wrksrc="palemoon-source"
+create_wrksrc=yes
+build_wrksrc="pale-moon"
 hostmakedepends="autoconf213 perl pkg-config python unzip yasm zip tar
  which"
 makedepends="libXt-devel $(vopt_if alsa alsa-lib-devel)
@@ -13,8 +14,11 @@ short_desc="Open source web browser based on Firefox focusing on efficiency"
 maintainer="hazen2215 <haz@disroot.org>"
 license="MPL-2.0, GPL-2.0-or-later, LGPL-2.1-or-later"
 homepage="https://www.palemoon.org/"
-distfiles="https://archive.palemoon.org/source/palemoon-${version}.source.tar.xz"
-checksum=34ba2b78b640f8ff1eb8137bb87a24ab5452eddc0b42fa908e4d5a1a898cfdac
+distfiles="https://repo.palemoon.org/MoonchildProductions/Pale-Moon/archive/${version}_Release.tar.gz
+ https://repo.palemoon.org/MoonchildProductions/UXP/archive/RB20220707.tar.gz"
+checksum="b0503d32338bc9f9e14b32c4acec7f3e09802b3990b979ab75e2077b1e9bd6be
+ dc7292e7e6f50063c3fcbbbd8cdb23e6eedf5b9bf290ac8aeca7c72e7060d3e5"
+patch_args="-Np1 --directory=${build_wrksrc}"
 
 build_options="alsa jack dbus pulseaudio xscreensaver sndio gtk3"
 build_options_default="alsa"
@@ -23,9 +27,14 @@ if [ "$XBPS_TARGET_NO_ATOMIC8" ]; then
 	makedepends+=" libatomic-devel"
 fi
 
+post_extract() {
+	rmdir pale-moon/platform
+	mv uxp pale-moon/platform
+}
+
 post_patch() {
 	if [ "$build_option_gtk3" ]; then
-		patch -Np1 -i "${FILESDIR}/no-gtk2.patch"
+		patch -Np1 --directory=${build_wrksrc} -i "${FILESDIR}/no-gtk2.patch"
 	fi
 
 	# actually mach is bash script
@@ -33,7 +42,7 @@ post_patch() {
 }
 
 do_build() {
-	cp "${FILESDIR}/mozconfig" "${wrksrc}/.mozconfig"
+	cp "${FILESDIR}/mozconfig" ".mozconfig"
 
 	case "$XBPS_TARGET_MACHINE" in
 	*-musl)
@@ -86,7 +95,7 @@ do_build() {
 
 	export MOZ_MAKE_FLAGS="${makejobs}"
 	export MOZ_NOSPAM=1
-	export MOZBUILD_STATE_PATH="${wrksrc}/mozbuild"
+	export MOZBUILD_STATE_PATH="mozbuild"
 
 	cat <<! >>.mozconfig
 ac_add_options --enable-default-toolkit=cairo-gtk$(vopt_if gtk3 '3' '2')
@@ -103,14 +112,14 @@ export MOZ_PKG_SPECIAL=gtk$(vopt_if gtk3 '3' '2')
 }
 
 do_install() {
-	export MOZBUILD_STATE_PATH="${wrksrc}/mozbuild"
+	export MOZBUILD_STATE_PATH="mozbuild"
 	DESTDIR="$DESTDIR" ./mach install
 
-	vinstall ${wrksrc}/palemoon/branding/official/palemoon.desktop 644 \
+	vinstall palemoon/branding/official/palemoon.desktop 644 \
 		usr/share/applications
 
 	for i in 16 22 24 32 48 256; do
-		vinstall ${wrksrc}/palemoon/branding/official/default$i.png 644 \
+		vinstall palemoon/branding/official/default$i.png 644 \
 			usr/share/icons/hicolor/${i}x${i}/apps palemoon.png
 	done
 
