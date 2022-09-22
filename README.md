@@ -1,7 +1,6 @@
 # Pale Moon xbps package
 - binary release is for x86_64-musl only
 - enabled build option: alsa
-- cross build is broken
 - template is BSD-2-Clause
 # Credits
 - https://www.palemoon.org/
