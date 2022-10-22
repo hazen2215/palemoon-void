@@ -1,8 +1,8 @@
 # Template file for 'palemoon'
 pkgname=palemoon
-version=31.2.0
+version=31.3.0.1
 revision=1
-_UXP_version=RB_20220802
+_UXP_version=RB_20220928
 create_wrksrc=yes
 build_wrksrc="pale-moon"
 hostmakedepends="autoconf213 perl pkg-config python unzip yasm zip tar
@@ -17,8 +17,8 @@ license="MPL-2.0, GPL-2.0-or-later, LGPL-2.1-or-later"
 homepage="https://www.palemoon.org/"
 distfiles="https://repo.palemoon.org/MoonchildProductions/Pale-Moon/archive/${version}_Release.tar.gz
  https://repo.palemoon.org/MoonchildProductions/UXP/archive/${_UXP_version}.tar.gz"
-checksum="f0a2d4f29a5621336acfb02d39cb0c10d745dc681b55dbf9092f3908017fec23
- dfffd85134e3015f475d7307599dec009dc95b523a981e36331c4bd5470d9e3f"
+checksum="ab19aee8f75df11dbad63a7b1bfa7f9aea5519bbf43ed666dc15a91c0087fbba
+ 5ffb4cca291d825fb378228882585fd9edcb9eef19414fffa726a025a8adb788"
 patch_args="-Np1 --directory=${build_wrksrc}"
 
 build_options="alsa jack dbus pulseaudio xscreensaver sndio gtk3"
@@ -35,11 +35,9 @@ post_extract() {
 
 post_patch() {
 	if [ "$build_option_gtk3" ]; then
-		patch -Np1 --directory=${build_wrksrc} -i "${FILESDIR}/no-gtk2.patch"
+		patch -Np1 --directory=${build_wrksrc} -i \
+			"${FILESDIR}/no-gtk2.patch"
 	fi
-
-	# actually mach is bash script
-	vsed -i -e '1s~/bin/sh~/bin/bash~' mach
 }
 
 do_build() {
@@ -91,7 +89,7 @@ do_build() {
 	export LDFLAGS+=" -Wl,-rpath=/usr/lib/palemoon"
 
 	# increase default stack size as palemoon uses a recursive js parser
-	export LDFLAGS+=" -Wl,-z,stack-size=524288"
+	export LDFLAGS+=" -Wl,-z,stack-size=2097152"
 
 	export MOZ_MAKE_FLAGS="${makejobs}"
 	export MOZ_NOSPAM=1

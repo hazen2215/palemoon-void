@@ -1,0 +1,15 @@
+set max stack size to 2MB,
+see https://repo.palemoon.org/MoonchildProductions/UXP/commit/00f22ddbe62f9ab4cf314b1beb18b7f9a91edae2
+diff --git a/platform/js/xpconnect/src/XPCJSContext.cpp b/platform/js/xpconnect/src/XPCJSContext.cpp
+index 9d11356e27..9b06c94fbc 100644
+--- a/platform/js/xpconnect/src/XPCJSContext.cpp
++++ b/platform/js/xpconnect/src/XPCJSContext.cpp
+@@ -3231,7 +3231,7 @@ XPCJSContext::Initialize()
+     // Most Linux distributions set default stack size to 8MB.  Use it as the
+     // maximum value.
+     // Solaris uses 8 or 10 MB, depending, so this is a safe max there too.
+-    const size_t kStackQuotaMax = 8 * 1024 * 1024;
++    const size_t kStackQuotaMax = 2 * 1024 * 1024;
+ #if defined(MOZ_ASAN) || defined(DEBUG)
+     // Bug 803182: account for the 4x difference in the size of js::Interpret
+     // between optimized and debug builds.  We use 2x since the JIT part
