@@ -1,8 +1,8 @@
 # Template file for 'palemoon'
 pkgname=palemoon
-version=31.3.1
+version=32.4.0
 revision=1
-_UXP_version=RB_20221101
+_UXP_version=RB_20230904
 create_wrksrc=yes
 build_wrksrc="pale-moon"
 hostmakedepends="autoconf213 perl pkg-config python unzip yasm zip tar
@@ -17,16 +17,15 @@ license="MPL-2.0, GPL-2.0-or-later, LGPL-2.1-or-later"
 homepage="https://www.palemoon.org/"
 distfiles="https://repo.palemoon.org/MoonchildProductions/Pale-Moon/archive/${version}_Release.tar.gz
  https://repo.palemoon.org/MoonchildProductions/UXP/archive/${_UXP_version}.tar.gz"
-checksum="50c455f141b6568ee66e8a81f3a828a89364c707c171e1c9a869fa8d2eed2983
- b1a0239046eab48b546b5e854c30ee89ab1655a34bd5932f94b2e813fe85ec97"
+checksum="7aad83c1e475642a9c9b69bb13e8f909865ce3ae8dae1906315a0686d2f817f8
+ 3c41d41c5f12c61776e6f65d5dd6897a19910f899e28c1c6bdce6f96bd3ca0d9"
 patch_args="-Np1 --directory=${build_wrksrc}"
+
+CFLAGS="-D_LARGEFILE64_SOURCE=1 -D_FILE_OFFSET_BITS=64"
+CXXFLAGS="-D_LARGEFILE64_SOURCE=1 -D_FILE_OFFSET_BITS=64"
 
 build_options="alsa jack dbus pulseaudio xscreensaver sndio gtk3"
 build_options_default="alsa"
-
-if [ "$XBPS_TARGET_NO_ATOMIC8" ]; then
-	makedepends+=" libatomic-devel"
-fi
 
 post_extract() {
 	rmdir pale-moon/platform
@@ -41,7 +40,50 @@ post_patch() {
 }
 
 do_build() {
-	cp "${FILESDIR}/mozconfig" ".mozconfig"
+	export LDFLAGS="-Wl,-rpath=/usr/lib/palemoon"
+
+	# increase default stack size as palemoon uses a recursive js parser
+	export LDFLAGS+=" -Wl,-z,stack-size=2097152"
+
+	cat <<-! >.mozconfig
+	ac_add_options --prefix=/usr
+	ac_add_options --libdir=/usr/lib
+	ac_add_options --host=${XBPS_TRIPLET}
+	ac_add_options --target=${XBPS_CROSS_TRIPLET:-${XBPS_TRIPLET}}
+
+	ac_add_options --enable-application=palemoon
+	ac_add_options --enable-optimize="\${CFLAGS}"
+	ac_add_options --enable-devtools
+	ac_add_options --with-pthreads
+	ac_add_options --enable-av1
+	mk_add_options AUTOCLOBBER=1
+
+	ac_add_options --disable-eme
+	ac_add_options --disable-gamepad
+	ac_add_options --disable-tests
+	ac_add_options --disable-debug
+	ac_add_options --disable-necko-wifi
+	ac_add_options --disable-updater
+	ac_add_options --disable-gconf
+	ac_add_options --disable-crashreporter
+	ac_add_options --disable-parental-controls
+	ac_add_options --disable-maintenance-service
+	ac_add_options --disable-strip
+	ac_add_options --disable-install-strip
+	ac_add_options --disable-profiling
+
+	# Please see https://www.palemoon.org/redist.shtml for restrictions when using the official branding.
+	ac_add_options --disable-official-branding
+	export MOZILLA_OFFICIAL=1
+
+	ac_add_options --enable-default-toolkit=cairo-gtk$(vopt_if gtk3 '3' '2')
+	ac_add_options $(vopt_enable alsa)
+	ac_add_options $(vopt_enable jack)
+	ac_add_options $(vopt_enable sndio)
+	ac_add_options $(vopt_enable dbus)
+	ac_add_options $(vopt_enable pulseaudio)
+	export MOZ_PKG_SPECIAL=gtk$(vopt_if gtk3 '3' '2')
+	!
 
 	case "$XBPS_TARGET_MACHINE" in
 	*-musl)
@@ -56,10 +98,6 @@ do_build() {
 		;;
 	esac
 
-	if [ "$XBPS_TARGET_NO_ATOMIC8" ]; then
-		export LDFLAGS+=" -latomic"
-	fi
-
 	if [ "$CROSS_BUILD" ]; then
 		export HOST_CFLAGS="${XBPS_CFLAGS}"
 		export HOST_CXXFLAGS="${XBPS_CXXFLAGS}"
@@ -72,12 +110,6 @@ do_build() {
 			ac_cv_sqlite_dbstat_vtab=yes \
 			ac_cv_sqlite_enable_unlock_notify=yes \
 			ac_cv_prog_hostcxx_works=1
-
-		echo "ac_add_options --target=$XBPS_CROSS_TRIPLET" >>.mozconfig
-		echo "ac_add_options --host=$XBPS_TRIPLET" >>.mozconfig
-	else
-		echo "ac_add_options --target=$XBPS_TRIPLET" >>.mozconfig
-		echo "ac_add_options --host=$XBPS_TRIPLET" >>.mozconfig
 	fi
 
 	# work around large debug symbols on 32-bit hosts
@@ -86,31 +118,20 @@ do_build() {
 		export LDFLAGS+=" -Wl,--no-keep-memory"
 	fi
 
-	export LDFLAGS+=" -Wl,-rpath=/usr/lib/palemoon"
-
-	# increase default stack size as palemoon uses a recursive js parser
-	export LDFLAGS+=" -Wl,-z,stack-size=2097152"
+	if [ "$SOURCE_DATE_EPOCH" ]; then
+		export MOZ_BUILD_DATE=$(date --date "@$SOURCE_DATE_EPOCH" "+%Y%m%d%H%M%S")
+	fi
 
 	export MOZ_MAKE_FLAGS="${makejobs}"
 	export MOZ_NOSPAM=1
-	export MOZBUILD_STATE_PATH="mozbuild"
-
-	cat <<! >>.mozconfig
-ac_add_options --enable-default-toolkit=cairo-gtk$(vopt_if gtk3 '3' '2')
-ac_add_options $(vopt_enable alsa)
-ac_add_options $(vopt_enable jack)
-ac_add_options $(vopt_enable sndio)
-ac_add_options $(vopt_enable dbus)
-ac_add_options $(vopt_enable pulseaudio)
-export MOZ_PKG_SPECIAL=gtk$(vopt_if gtk3 '3' '2')
-!
+	export MOZBUILD_STATE_PATH="${wrksrc}/mozbuild"
 
 	rm -f old-configure
 	./mach build
 }
 
 do_install() {
-	export MOZBUILD_STATE_PATH="mozbuild"
+	export MOZBUILD_STATE_PATH="${wrksrc}/mozbuild"
 	DESTDIR="$DESTDIR" ./mach install
 
 	vinstall palemoon/branding/official/palemoon.desktop 644 \
