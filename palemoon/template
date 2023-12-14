@@ -1,8 +1,8 @@
 # Template file for 'palemoon'
 pkgname=palemoon
-version=32.4.0
+version=32.5.1
 revision=1
-_UXP_version=RB_20230904
+_UXP_version=RB_20231128
 create_wrksrc=yes
 build_wrksrc="pale-moon"
 hostmakedepends="autoconf213 perl pkg-config python unzip yasm zip tar
@@ -17,8 +17,8 @@ license="MPL-2.0, GPL-2.0-or-later, LGPL-2.1-or-later"
 homepage="https://www.palemoon.org/"
 distfiles="https://repo.palemoon.org/MoonchildProductions/Pale-Moon/archive/${version}_Release.tar.gz
  https://repo.palemoon.org/MoonchildProductions/UXP/archive/${_UXP_version}.tar.gz"
-checksum="7aad83c1e475642a9c9b69bb13e8f909865ce3ae8dae1906315a0686d2f817f8
- 3c41d41c5f12c61776e6f65d5dd6897a19910f899e28c1c6bdce6f96bd3ca0d9"
+checksum="5045c893a3534e68a646cc5217875510f1464f942e6edd5d8776591bb1c957e7
+ ef0e9c26b9906bb040f97372ef11a99b6e640bf7a471184376b9c5eab1d904a6"
 patch_args="-Np1 --directory=${build_wrksrc}"
 
 CFLAGS="-D_LARGEFILE64_SOURCE=1 -D_FILE_OFFSET_BITS=64"
