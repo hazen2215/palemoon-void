@@ -1,8 +1,8 @@
 # Template file for 'palemoon'
 pkgname=palemoon
-version=32.5.1
+version=33.0.1
 revision=1
-_UXP_version=RB_20231128
+_UXP_version=RB_20240227
 create_wrksrc=yes
 build_wrksrc="pale-moon"
 hostmakedepends="autoconf213 perl pkg-config python unzip yasm zip tar
@@ -17,8 +17,8 @@ license="MPL-2.0, GPL-2.0-or-later, LGPL-2.1-or-later"
 homepage="https://www.palemoon.org/"
 distfiles="https://repo.palemoon.org/MoonchildProductions/Pale-Moon/archive/${version}_Release.tar.gz
  https://repo.palemoon.org/MoonchildProductions/UXP/archive/${_UXP_version}.tar.gz"
-checksum="5045c893a3534e68a646cc5217875510f1464f942e6edd5d8776591bb1c957e7
- ef0e9c26b9906bb040f97372ef11a99b6e640bf7a471184376b9c5eab1d904a6"
+checksum="e8e1865be6866e1a5ad3c99761fb8db8da7e2b5da94f0049f066fc9b2f86f396
+ db565cd89b18663fc4f030d44a6fd209ba0cd5e0ea6cf2f2028c2b8b1cb6fe87"
 patch_args="-Np1 --directory=${build_wrksrc}"
 
 CFLAGS="-D_LARGEFILE64_SOURCE=1 -D_FILE_OFFSET_BITS=64"
@@ -58,7 +58,7 @@ do_build() {
 	ac_add_options --enable-av1
 	mk_add_options AUTOCLOBBER=1
 
-	ac_add_options --disable-eme
+	ac_add_options --disable-webrtc
 	ac_add_options --disable-gamepad
 	ac_add_options --disable-tests
 	ac_add_options --disable-debug
@@ -143,7 +143,7 @@ do_install() {
 	done
 
 	# We don't want the development stuff
-	rm -rf ${DESTDIR}/usr/{include,lib/palemoon-devel,share}
+	rm -rf ${DESTDIR}/usr/{include,lib/palemoon-devel,share/idl}
 
 	# https://bugzilla.mozilla.org/show_bug.cgi?id=658850
 	ln -sf palemoon ${DESTDIR}/usr/lib/palemoon/palemoon-bin
