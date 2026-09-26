@@ -1,49 +1,44 @@
 # Template file for 'palemoon'
 pkgname=palemoon
-version=33.0.1
+version=34.3.2.1
 revision=1
-_UXP_version=RB_20240227
+_UXP_version=RB_20260812
 create_wrksrc=yes
 build_wrksrc="pale-moon"
-hostmakedepends="autoconf213 perl pkg-config python unzip yasm zip tar
- which"
+hostmakedepends="perl pkg-config python3 unzip yasm zip tar which m4 nasm"
 makedepends="libXt-devel $(vopt_if alsa alsa-lib-devel)
  $(vopt_if dbus dbus-glib-devel) $(vopt_if pulseaudio pulseaudio-devel)
  $(vopt_if xscreensaver libXScrnSaver-devel) $(vopt_if sndio sndio-devel)
- $(vopt_if jack jack-devel) $(vopt_if gtk3 gtk+3-devel gtk+-devel)"
+ $(vopt_if jack jack-devel) $(vopt_if gtk3 gtk+3-devel gtk+-devel)
+ $(vopt_if accessibility at-spi2-atk-devel)"
 short_desc="Open source web browser based on Firefox focusing on efficiency"
 maintainer="hazen2215 <haz@disroot.org>"
 license="MPL-2.0, GPL-2.0-or-later, LGPL-2.1-or-later"
 homepage="https://www.palemoon.org/"
+changelog="https://www.palemoon.org/releasenotes.shtml"
 distfiles="https://repo.palemoon.org/MoonchildProductions/Pale-Moon/archive/${version}_Release.tar.gz
  https://repo.palemoon.org/MoonchildProductions/UXP/archive/${_UXP_version}.tar.gz"
-checksum="e8e1865be6866e1a5ad3c99761fb8db8da7e2b5da94f0049f066fc9b2f86f396
- db565cd89b18663fc4f030d44a6fd209ba0cd5e0ea6cf2f2028c2b8b1cb6fe87"
+checksum="1ea7505f4f8186ed9746a9bd4efbbde315d0c6a8655c68ccaa68a8e5bd58d209
+ d4c8082d24a663c67dcc874b59d4f76017368b613cfc24982b010d1046be43e2"
 patch_args="-Np1 --directory=${build_wrksrc}"
 
 CFLAGS="-D_LARGEFILE64_SOURCE=1 -D_FILE_OFFSET_BITS=64"
 CXXFLAGS="-D_LARGEFILE64_SOURCE=1 -D_FILE_OFFSET_BITS=64"
 
-build_options="alsa jack dbus pulseaudio xscreensaver sndio gtk3"
+build_options="alsa jack dbus pulseaudio xscreensaver sndio gtk3 npapi accessibility"
 build_options_default="alsa"
+vopt_conflict gtk3 npapi
 
 post_extract() {
 	rmdir pale-moon/platform
 	mv uxp pale-moon/platform
 }
 
-post_patch() {
-	if [ "$build_option_gtk3" ]; then
-		patch -Np1 --directory=${build_wrksrc} -i \
-			"${FILESDIR}/no-gtk2.patch"
-	fi
-}
-
 do_build() {
 	export LDFLAGS="-Wl,-rpath=/usr/lib/palemoon"
 
 	# increase default stack size as palemoon uses a recursive js parser
-	export LDFLAGS+=" -Wl,-z,stack-size=2097152"
+	export LDFLAGS+=" -Wl,-z,stack-size=8388608"
 
 	cat <<-! >.mozconfig
 	ac_add_options --prefix=/usr
@@ -64,7 +59,6 @@ do_build() {
 	ac_add_options --disable-debug
 	ac_add_options --disable-necko-wifi
 	ac_add_options --disable-updater
-	ac_add_options --disable-gconf
 	ac_add_options --disable-crashreporter
 	ac_add_options --disable-parental-controls
 	ac_add_options --disable-maintenance-service
@@ -82,6 +76,8 @@ do_build() {
 	ac_add_options $(vopt_enable sndio)
 	ac_add_options $(vopt_enable dbus)
 	ac_add_options $(vopt_enable pulseaudio)
+	ac_add_options $(vopt_enable npapi)
+	ac_add_options $(vopt_enable accessibility)
 	export MOZ_PKG_SPECIAL=gtk$(vopt_if gtk3 '3' '2')
 	!
 
